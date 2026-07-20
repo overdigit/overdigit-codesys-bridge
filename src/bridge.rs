@@ -158,7 +158,7 @@ fn perform_operation(cmd: &Command) -> Result<Response, Error> {
             match phase {
                 FanTest::Init => {
                     if !std::process::Command::new("systemctl")
-                        .args(["stop", "wp360-fan-ctrl"])
+                        .args(["--no-ask-password", "stop", "wp360-fan-ctrl"])
                         .status()
                         .or(Err(Error::Spawn))?
                         .success()
@@ -203,7 +203,7 @@ fn perform_operation(cmd: &Command) -> Result<Response, Error> {
                 }
                 FanTest::Stop => {
                     if !std::process::Command::new("systemctl")
-                        .args(["start", "wp360-fan-ctrl"])
+                        .args(["--no-ask-password", "start", "wp360-fan-ctrl"])
                         .status()
                         .or(Err(Error::Spawn))?
                         .success()
@@ -228,7 +228,7 @@ fn perform_operation(cmd: &Command) -> Result<Response, Error> {
         }
         Command::HostnameSet(hostname) => {
             if !std::process::Command::new("hostnamectl")
-                .arg("hostname")
+                .args(["--no-ask-password", "hostname"])
                 .arg(hostname)
                 .status()
                 .or(Err(Error::Spawn))?
@@ -472,7 +472,7 @@ fn perform_operation(cmd: &Command) -> Result<Response, Error> {
             }
             if conf.ntp
                 && !std::process::Command::new("systemctl")
-                    .args(["restart", "systemd-timesyncd"])
+                    .args(["--no-ask-password", "restart", "systemd-timesyncd"])
                     .status()
                     .or(Err(Error::Spawn))?
                     .success()
@@ -494,7 +494,7 @@ fn perform_operation(cmd: &Command) -> Result<Response, Error> {
         Command::RtcCheck => Ok(Response::Rtc(fs::exists("/dev/rtc").or(Err(Error::Rtc))?)),
         Command::RtsRestart => {
             if !std::process::Command::new("systemctl")
-                .args(["restart", "codesyscontrol"])
+                .args(["--no-ask-password", "restart", "codesyscontrol"])
                 .status()
                 .or(Err(Error::Spawn))?
                 .success()
