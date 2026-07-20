@@ -116,8 +116,8 @@ pub fn client(mut stream: UnixStream) {
             Ok(t) => t,
             Err(e) => {
                 eprintln!("{e:?}");
-                // Break if stream is unreadable, reply with syntax error otherwise
-                continue;
+                let _ = stream.shutdown(std::net::Shutdown::Both);
+                break;
             }
         };
         let res = perform_operation(&cmd);
