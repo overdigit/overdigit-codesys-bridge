@@ -54,7 +54,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         let path = std::path::Path::new(&dir);
         wait_for(path)?;
     }
-    let sock_path = dir_path.join("wp360-ftp.sock");
+    let sock_path = dir_path.join("wp360-bridge.sock");
     match sock_path.try_exists() {
         Ok(true) => {
             match UnixStream::connect(&sock_path) {
