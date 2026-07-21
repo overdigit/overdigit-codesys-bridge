@@ -1,6 +1,6 @@
 [package]
 name = "wp360-codesys-bridge-rs"
-version = "0.1.0"
+version = "0.5.0"
 edition = "2024"
 
 [dependencies]
@@ -9,3 +9,16 @@ inotify = "0.11.4"
 rppal = "0.22.1"
 serde = { version = "1.0.228", features = ["derive"] }
 serde-xml-rs = "0.8.2"
+serde_repr = "0.1.21"
+
+[package.metadata.deb]
+revision = "1"
+maintainer-scripts = "debian/"
+section = "misc"
+systemd-units = { }
+extended-description = """\
+A daemon for privileged operations, using XML messages via Unix Domain Sockets as its interface.\
+Meant for use on OVERDIGIT WP360 PLC devices via the OVERDIGIT WP360 CODESYS library."""
+assets = [
+    ["target/release/wp360-codesys-bridge-rs", "usr/libexec/wp360-codesys-bridge/wp360-codesys-bridge", "755"],
+]

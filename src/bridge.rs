@@ -1,16 +1,18 @@
 use rppal::gpio::Gpio;
 use serde::{Deserialize, Serialize};
+use serde_repr::*;
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::os::unix::net::UnixStream;
 use std::string::ToString;
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize_repr, Debug)]
+#[repr(u8)]
 enum FanTest {
-    Init,
-    Test1,
-    Test2,
-    Stop,
+    Init  = 0,
+    Test1 = 1,
+    Test2 = 2,
+    Stop  = 3,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -66,48 +68,62 @@ enum Response {
 }
 
 #[repr(u32)]
-#[derive(Serialize, Debug)]
+#[derive(Serialize_repr, Debug)]
 enum Error {
-    SerialNotFound,
-    CpuTempNotFound,
-    FanTestServiceStart,
-    FanTestServiceStop,
-    FanTestGpio,
-    FanTestPin26,
-    FanTestPin27,
-    FanTestSetSpeed,
-    Hostnamectl,
-    HostnameParse,
-    HostsRead,
-    HostsWrite,
-    MacAddress,
-    Nmcli,
-    NmcliAddr,
-    NmcliDhcp,
-    NmcliDns,
-    NmcliGateway,
-    NmcliMethod,
-    NmcliParse,
-    NmcliUp,
-    NmcliUtf8,
-    NtpFallbackFile,
-    NtpFallbackMalformed,
-    NtpFallbackRead,
-    NtpFallbackRm,
-    NtpFallbackWrite,
-    NtpServerFile,
-    NtpServerMalformed,
-    NtpServerRead,
-    NtpServerRm,
-    NtpServerWrite,
-    Reboot,
-    Rtc,
-    RtsRestart,
-    Spawn,
-    Timedatectl,
-    TimedatectlParse,
-    TimesyncdRestart,
-    WatchdogWrite,
+    CpuinfoOpen          = 101,
+    CpuSerialNotFound    = 102,
+
+    CpuTempNotFound      = 12,
+    CpuTempOpen          = 11,
+
+    FanTestServiceStart  = 114,
+    FanTestServiceStop   = 111,
+    FanTestGpio          = 113,
+    FanTestPin26         = 116,
+    FanTestPin27         = 117,
+    FanTestSetSpeed      = 112,
+
+    Hostnamectl          = 21,
+    HostnameParse        = 22,
+    HostsRead            = 23,
+    HostsWrite           = 24,
+
+    MacAddress           = 41,
+
+    Nmcli                = 31,
+    NmcliAddr            = 35,
+    NmcliDhcp            = 34,
+    NmcliDns             = 37,
+    NmcliGateway         = 36,
+    NmcliMethod          = 38,
+    NmcliParse           = 33,
+    NmcliUp              = 39,
+    NmcliUtf8            = 32,
+
+    NtpFallbackFile      = 56,
+    NtpFallbackMalformed = 58,
+    NtpFallbackRead      = 57,
+    NtpFallbackRm        = 63,
+    NtpFallbackWrite     = 64,
+    NtpServerFile        = 53,
+    NtpServerMalformed   = 55,
+    NtpServerRead        = 54,
+    NtpServerRm          = 61,
+    NtpServerWrite       = 62,
+
+    Reboot               = 3,
+
+    Rtc                  = 5,
+
+    RtsRestart           = 7,
+
+    Spawn                = 1,
+
+    Timedatectl          = 51,
+    TimedatectlParse     = 52,
+    TimesyncdRestart     = 65,
+
+    WatchdogWrite        = 9,
 }
 
 pub fn client(mut stream: UnixStream) {
@@ -134,7 +150,7 @@ pub fn client(mut stream: UnixStream) {
 fn perform_operation(cmd: &Command) -> Result<Response, Error> {
     match cmd {
         Command::CpuSerialGet => {
-            let cpuinfo = File::open("/proc/cpuinfo").or(Err(Error::SerialNotFound))?;
+            let cpuinfo = File::open("/proc/cpuinfo").or(Err(Error::CpuinfoOpen))?;
             let cpuinfo = std::io::BufReader::new(cpuinfo);
             cpuinfo
                 .lines()
@@ -146,11 +162,11 @@ fn perform_operation(cmd: &Command) -> Result<Response, Error> {
                             .to_string(),
                     ))
                 })
-                .ok_or(Error::SerialNotFound)
+                .ok_or(Error::CpuSerialNotFound)
         }
         Command::CpuTempRead => Ok(Response::CpuTemp(
             std::fs::read_to_string("/sys/class/thermal/thermal_zone0/temp")
-                .or(Err(Error::CpuTempNotFound))?
+                .or(Err(Error::CpuTempOpen))?
                 .parse::<u32>()
                 .or(Err(Error::CpuTempNotFound))?,
         )),
