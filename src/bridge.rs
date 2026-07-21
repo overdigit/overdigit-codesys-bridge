@@ -223,7 +223,10 @@ fn perform_operation(cmd: &Command) -> Result<Response, Error> {
                 return Err(Error::Hostnamectl);
             }
             Ok(Response::Hostname(
-                String::from_utf8(output.stdout).or(Err(Error::HostnameParse))?,
+                String::from_utf8(output.stdout)
+                    .or(Err(Error::HostnameParse))?
+                    .trim()
+                    .to_string(),
             ))
         }
         Command::HostnameSet(hostname) => {
@@ -394,7 +397,9 @@ fn perform_operation(cmd: &Command) -> Result<Response, Error> {
         }
         Command::MacAddressGet(dev) => Ok(Response::MacAddress(
             fs::read_to_string(format!("/sys/class/net/{dev}/address"))
-                .or(Err(Error::MacAddress))?,
+                .or(Err(Error::MacAddress))?
+                .trim()
+                .to_string(),
         )),
         Command::NtpConfigGet => {
             let output = std::process::Command::new("timedatectl")
@@ -512,7 +517,10 @@ fn perform_operation(cmd: &Command) -> Result<Response, Error> {
                 return Err(Error::Timedatectl);
             }
             Ok(Response::Timezone(
-                String::from_utf8(output.stdout).or(Err(Error::TimedatectlParse))?,
+                String::from_utf8(output.stdout)
+                    .or(Err(Error::TimedatectlParse))?
+                    .trim()
+                    .to_string(),
             ))
         }
         Command::TimezoneSet(tz) => {
