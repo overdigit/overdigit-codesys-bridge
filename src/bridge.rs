@@ -173,6 +173,7 @@ fn perform_operation(cmd: &Command) -> Result<Response, Error> {
         Command::CpuTempRead => Ok(Response::CpuTemp(
             std::fs::read_to_string("/sys/class/thermal/thermal_zone0/temp")
                 .or(Err(Error::CpuTempOpen))?
+                .trim()
                 .parse::<u32>()
                 .or(Err(Error::CpuTempNotFound))?,
         )),
