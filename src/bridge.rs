@@ -126,6 +126,8 @@ enum Error {
     TimesyncdRestart     = 65,
 
     WatchdogWrite        = 9,
+
+    SyntaxError          = 99,
 }
 
 pub fn client(mut stream: UnixStream) {
@@ -134,16 +136,18 @@ pub fn client(mut stream: UnixStream) {
             Ok(t) => t,
             Err(e) => {
                 eprintln!("{e:?}");
+                let _ = serde_xml_rs::ser::to_writer(&mut stream, &Err::<(), _>(Error::SyntaxError));
                 let _ = stream.shutdown(std::net::Shutdown::Both);
                 break;
             }
         };
         let res = perform_operation(&cmd);
-        let Ok(()) = (match res {
-            Ok(t) => serde_xml_rs::ser::to_writer(&mut stream, &t),
-            Err(e) => serde_xml_rs::ser::to_writer(&mut stream, &e),
-        }) else {
-            break;
+        match serde_xml_rs::ser::to_writer(&mut stream, &res) {
+            Ok(_) => {},
+            Err(e) => {
+                eprintln!("{e:?}");
+                break;
+            }
         };
     }
     let _ = stream.shutdown(std::net::Shutdown::Both);
