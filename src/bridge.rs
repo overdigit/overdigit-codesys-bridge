@@ -472,20 +472,26 @@ fn perform_operation(cmd: &Command) -> Result<Response, Error> {
                             .or(Err(Error::NtpServerRm))?;
                     }
                 }
-                _ => fs::write("/etc/systemd/timesyncd.conf.d/server.conf", &conf.server)
-                    .or(Err(Error::NtpServerWrite))?,
+                _ => {
+                    let mut server = "[Time]\nNTP=".to_string();
+                    server.push_str(&conf.server);
+                    fs::write("/etc/systemd/timesyncd.conf.d/server.conf", &server)
+                    .or(Err(Error::NtpServerWrite))?
+                }
             }
             if conf.fallback.contains(&"-".to_string()) {
-                if fs::exists("/etc/systemd/timesyncd.conf.d/server.conf")
+                if fs::exists("/etc/systemd/timesyncd.conf.d/fallback.conf")
                     .or(Err(Error::NtpFallbackFile))?
                 {
-                    fs::remove_file("/etc/systemd/timesyncd.conf.d/server.conf")
+                    fs::remove_file("/etc/systemd/timesyncd.conf.d/fallback.conf")
                         .or(Err(Error::NtpFallbackRm))?;
                 }
             } else if !conf.fallback.is_empty() {
+                let mut fallback = "[Time]\nFallbackNTP=".to_string();
+                fallback.push_str(&conf.fallback.join(" "));
                 fs::write(
-                    "/etc/systemd/timesyncd.conf.d/server.conf",
-                    conf.fallback.join(" "),
+                    "/etc/systemd/timesyncd.conf.d/fallback.conf",
+                    &fallback
                 )
                 .or(Err(Error::NtpFallbackWrite))?;
             }
