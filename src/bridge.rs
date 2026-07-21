@@ -9,10 +9,10 @@ use std::string::ToString;
 #[derive(Deserialize_repr, Debug)]
 #[repr(u8)]
 enum FanTest {
-    Init  = 0,
+    Init = 0,
     Test1 = 1,
     Test2 = 2,
-    Stop  = 3,
+    Stop = 3,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -72,62 +72,62 @@ enum Response {
 #[repr(u32)]
 #[derive(Serialize_repr, Debug)]
 enum Error {
-    CpuinfoOpen          = 101,
-    CpuSerialNotFound    = 102,
+    CpuinfoOpen = 101,
+    CpuSerialNotFound = 102,
 
-    CpuTempNotFound      = 12,
-    CpuTempOpen          = 11,
+    CpuTempNotFound = 12,
+    CpuTempOpen = 11,
 
-    FanTestServiceStart  = 114,
-    FanTestServiceStop   = 111,
-    FanTestGpio          = 113,
-    FanTestPin26         = 116,
-    FanTestPin27         = 117,
-    FanTestSetSpeed      = 112,
+    FanTestServiceStart = 114,
+    FanTestServiceStop = 111,
+    FanTestGpio = 113,
+    FanTestPin26 = 116,
+    FanTestPin27 = 117,
+    FanTestSetSpeed = 112,
 
-    Hostnamectl          = 21,
-    HostnameParse        = 22,
-    HostsRead            = 23,
-    HostsWrite           = 24,
+    Hostnamectl = 21,
+    HostnameParse = 22,
+    HostsRead = 23,
+    HostsWrite = 24,
 
-    MacAddress           = 41,
+    MacAddress = 41,
 
-    Nmcli                = 31,
-    NmcliAddr            = 35,
-    NmcliDhcp            = 34,
-    NmcliDns             = 37,
-    NmcliGateway         = 36,
-    NmcliMethod          = 38,
-    NmcliParse           = 33,
-    NmcliUp              = 39,
-    NmcliUtf8            = 32,
+    Nmcli = 31,
+    NmcliAddr = 35,
+    NmcliDhcp = 34,
+    NmcliDns = 37,
+    NmcliGateway = 36,
+    NmcliMethod = 38,
+    NmcliParse = 33,
+    NmcliUp = 39,
+    NmcliUtf8 = 32,
 
-    NtpFallbackFile      = 56,
+    NtpFallbackFile = 56,
     NtpFallbackMalformed = 58,
-    NtpFallbackRead      = 57,
-    NtpFallbackRm        = 63,
-    NtpFallbackWrite     = 64,
-    NtpServerFile        = 53,
-    NtpServerMalformed   = 55,
-    NtpServerRead        = 54,
-    NtpServerRm          = 61,
-    NtpServerWrite       = 62,
+    NtpFallbackRead = 57,
+    NtpFallbackRm = 63,
+    NtpFallbackWrite = 64,
+    NtpServerFile = 53,
+    NtpServerMalformed = 55,
+    NtpServerRead = 54,
+    NtpServerRm = 61,
+    NtpServerWrite = 62,
 
-    Reboot               = 3,
+    Reboot = 3,
 
-    Rtc                  = 5,
+    Rtc = 5,
 
-    RtsRestart           = 7,
+    RtsRestart = 7,
 
-    Spawn                = 1,
+    Spawn = 1,
 
-    Timedatectl          = 51,
-    TimedatectlParse     = 52,
-    TimesyncdRestart     = 65,
+    Timedatectl = 51,
+    TimedatectlParse = 52,
+    TimesyncdRestart = 65,
 
-    WatchdogWrite        = 9,
+    WatchdogWrite = 9,
 
-    SyntaxError          = 99,
+    SyntaxError = 99,
 }
 
 pub fn client(mut stream: UnixStream) {
@@ -136,14 +136,15 @@ pub fn client(mut stream: UnixStream) {
             Ok(t) => t,
             Err(e) => {
                 eprintln!("{e:?}");
-                let _ = serde_xml_rs::ser::to_writer(&mut stream, &Err::<(), _>(Error::SyntaxError));
+                let _ =
+                    serde_xml_rs::ser::to_writer(&mut stream, &Err::<(), _>(Error::SyntaxError));
                 let _ = stream.shutdown(std::net::Shutdown::Both);
                 break;
             }
         };
         let res = perform_operation(&cmd);
         match serde_xml_rs::ser::to_writer(&mut stream, &res) {
-            Ok(_) => {},
+            Ok(_) => {}
             Err(e) => {
                 eprintln!("{e:?}");
                 break;
@@ -476,7 +477,7 @@ fn perform_operation(cmd: &Command) -> Result<Response, Error> {
                     let mut server = "[Time]\nNTP=".to_string();
                     server.push_str(&conf.server);
                     fs::write("/etc/systemd/timesyncd.conf.d/server.conf", &server)
-                    .or(Err(Error::NtpServerWrite))?
+                        .or(Err(Error::NtpServerWrite))?
                 }
             }
             if conf.fallback.contains(&"-".to_string()) {
@@ -489,11 +490,8 @@ fn perform_operation(cmd: &Command) -> Result<Response, Error> {
             } else if !conf.fallback.is_empty() {
                 let mut fallback = "[Time]\nFallbackNTP=".to_string();
                 fallback.push_str(&conf.fallback.join(" "));
-                fs::write(
-                    "/etc/systemd/timesyncd.conf.d/fallback.conf",
-                    &fallback
-                )
-                .or(Err(Error::NtpFallbackWrite))?;
+                fs::write("/etc/systemd/timesyncd.conf.d/fallback.conf", &fallback)
+                    .or(Err(Error::NtpFallbackWrite))?;
             }
             if !std::process::Command::new("timedatectl")
                 .arg("set-ntp")
