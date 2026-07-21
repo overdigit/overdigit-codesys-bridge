@@ -163,7 +163,7 @@ fn perform_operation(cmd: &Command) -> Result<Response, Error> {
                 .find_map(|l| {
                     Some(Response::CpuSerial(
                         l.ok()?
-                            .strip_prefix("Serial:")?
+                            .strip_prefix("Serial")?
                             .trim_start_matches([' ', '\t', ':'])
                             .to_string(),
                     ))
