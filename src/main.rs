@@ -38,6 +38,19 @@ fn wait_for(dirname: &std::path::Path) -> Result<bool, Box<dyn Error>> {
     Ok(false)
 }
 
+fn get_uid(username: &str) -> std::io::Result<u32> {
+    Ok(std::fs::read_to_string("/etc/passwd")?
+        .lines()
+        .find_map(|l| {
+            let v = l.split(':').collect::<Vec<_>>();
+            if v.len() == 7 && v.first() == Some(&username) {
+                return v.get(2)?.parse::<u32>().ok();
+            }
+            None
+        })
+        .expect("Could not find {username} in /etc/passwd."))
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
     env_logger::init();
     let dir_env = std::env::var("WP360_CODESYS_SOCK_DIR");
@@ -73,7 +86,13 @@ fn main() -> Result<(), Box<dyn Error>> {
         Err(e) => return Err(Box::new(e)),
     }
 
+    let socket_user =
+        std::env::var("WP360_CODESYS_SOCK_USER").unwrap_or("codesyscontrol".to_string());
+    let socket_uid = get_uid(&socket_user)?;
+
     let listener = UnixListener::bind(&sock_path)?;
+
+    std::os::unix::fs::chown(&sock_path, Some(socket_uid), None)?;
 
     for stream in listener.incoming() {
         match stream {
