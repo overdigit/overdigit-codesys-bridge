@@ -1,5 +1,6 @@
 [package]
 name = "wp360-codesys-bridge-rs"
+authors = ["OVERDIGIT <info@overdigit.com>"]
 version = "0.5.0"
 edition = "2024"
 
