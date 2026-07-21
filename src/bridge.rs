@@ -23,7 +23,9 @@ struct IpConfig {
     gateway: String,
     dns: Vec<String>,
 
+    #[serde(default)]
     ip_dhcp: Vec<String>,
+    #[serde(default)]
     dns_dhcp: Vec<String>,
 }
 
