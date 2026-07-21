@@ -435,13 +435,13 @@ fn perform_operation(cmd: &Command) -> Result<Response, Error> {
             }
 
             Ok(Response::NtpConfig(NtpConfig {
-                ntp: String::from_utf8(output.stdout).or(Err(Error::TimedatectlParse))? == "yes",
+                ntp: String::from_utf8(output.stdout).or(Err(Error::TimedatectlParse))?.trim() == "yes",
                 server: if fs::exists("/etc/systemd/timesyncd.conf.d/server.conf")
                     .or(Err(Error::NtpServerFile))?
                 {
                     fs::read_to_string("/etc/systemd/timesyncd.conf.d/server.conf")
                         .or(Err(Error::NtpServerRead))?
-                        .strip_prefix("NTP=")
+                        .strip_prefix("[Time]\nNTP=")
                         .ok_or(Error::NtpServerMalformed)?
                         .to_string()
                 } else {
@@ -452,9 +452,9 @@ fn perform_operation(cmd: &Command) -> Result<Response, Error> {
                 {
                     fs::read_to_string("/etc/systemd/timesyncd.conf.d/fallback.conf")
                         .or(Err(Error::NtpFallbackRead))?
-                        .strip_prefix("FallbackNTP=")
+                        .strip_prefix("[Time]\nFallbackNTP=")
                         .ok_or(Error::NtpFallbackMalformed)?
-                        .split(',')
+                        .split(' ')
                         .map(ToString::to_string)
                         .collect()
                 } else {
