@@ -57,6 +57,7 @@ enum Command {
 }
 
 #[derive(Serialize, Debug)]
+#[serde(rename = "Result")]
 enum Response {
     CpuSerial(String),
     CpuTemp(u32),
@@ -67,6 +68,7 @@ enum Response {
     Rtc(bool),
     Timezone(String),
     Success(()),
+    Error(Error),
 }
 
 #[repr(u32)]
@@ -142,7 +144,10 @@ pub fn client(mut stream: UnixStream) {
                 break;
             }
         };
-        let res = perform_operation(&cmd);
+        let res = match perform_operation(&cmd) {
+            Ok(t) => t,
+            Err(e) => Response::Error(e),
+        };
         match serde_xml_rs::ser::to_writer(&mut stream, &res) {
             Ok(_) => {}
             Err(e) => {
@@ -435,7 +440,10 @@ fn perform_operation(cmd: &Command) -> Result<Response, Error> {
             }
 
             Ok(Response::NtpConfig(NtpConfig {
-                ntp: String::from_utf8(output.stdout).or(Err(Error::TimedatectlParse))?.trim() == "yes",
+                ntp: String::from_utf8(output.stdout)
+                    .or(Err(Error::TimedatectlParse))?
+                    .trim()
+                    == "yes",
                 server: if fs::exists("/etc/systemd/timesyncd.conf.d/server.conf")
                     .or(Err(Error::NtpServerFile))?
                 {
