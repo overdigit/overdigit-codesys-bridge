@@ -48,7 +48,7 @@ fn get_uid(username: &str) -> std::io::Result<u32> {
             }
             None
         })
-        .expect("Could not find {username} in /etc/passwd."))
+        .expect(&format!("Could not find user {username} in /etc/passwd.")))
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
