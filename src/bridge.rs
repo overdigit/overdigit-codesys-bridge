@@ -451,6 +451,7 @@ fn perform_operation(cmd: &Command) -> Result<Response, Error> {
                         .or(Err(Error::NtpServerRead))?
                         .strip_prefix("[Time]\nNTP=")
                         .ok_or(Error::NtpServerMalformed)?
+                        .trim()
                         .to_string()
                 } else {
                     String::new()
@@ -463,7 +464,7 @@ fn perform_operation(cmd: &Command) -> Result<Response, Error> {
                         .strip_prefix("[Time]\nFallbackNTP=")
                         .ok_or(Error::NtpFallbackMalformed)?
                         .split(' ')
-                        .map(ToString::to_string)
+                        .map(|a| a.trim().to_string() )
                         .collect()
                 } else {
                     vec![String::new()]
