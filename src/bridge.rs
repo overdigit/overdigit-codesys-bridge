@@ -139,7 +139,7 @@ pub fn client(mut stream: UnixStream) {
             Err(e) => {
                 eprintln!("{e:?}");
                 let _ =
-                    serde_xml_rs::ser::to_writer(&mut stream, &Err::<(), _>(Error::SyntaxError));
+                    serde_xml_rs::ser::to_writer(&mut stream, &Response::Error(Error::SyntaxError));
                 let _ = stream.shutdown(std::net::Shutdown::Both);
                 break;
             }
