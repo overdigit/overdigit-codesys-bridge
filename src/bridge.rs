@@ -1,6 +1,7 @@
 use rppal::gpio::Gpio;
 use serde::{Deserialize, Serialize};
-use serde_repr::*;
+use serde_repr::{Deserialize_repr, Serialize_repr};
+use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::os::unix::net::UnixStream;
@@ -19,14 +20,86 @@ enum FanTest {
 struct IpConfig {
     dev: String,
     dhcp: bool,
-    ip: String,
+    ip_dhcp: String,
     gateway: String,
-    dns: Vec<String>,
 
     #[serde(default)]
-    ip_dhcp: Vec<String>,
+    dns: Vec<String>,
+    #[serde(default)]
+    ip: Vec<String>,
     #[serde(default)]
     dns_dhcp: Vec<String>,
+}
+
+impl TryFrom<String> for IpConfig {
+    type Error = Error;
+    fn try_from(conf: String) -> Result<Self, Self::Error> {
+        /*        let ip4_static = conf
+        .lines()
+        .find_map(|l| l.strip_prefix("ipv4.addresses:"))
+        .ok_or(Error::NmcliParse)?
+        .to_string();*/
+
+        let dhcp = conf
+            .lines()
+            .filter_map(|l| {
+                l.strip_prefix("DHCP4.OPTION[")?
+                    .trim_start_matches([
+                        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ']', ':',
+                    ])
+                    .split_once('=')
+                    .map(|(k, v)| (k.trim(), v.trim()))
+            })
+            .collect::<HashMap<_, _>>();
+
+        let ip4_dhcp = dhcp.get("ip_address");
+
+        let ip4_static = conf
+            .lines()
+            .filter(|l| l.starts_with("IP4.ADDRESS["))
+            .filter_map(|l| l.split_once(':').map(|(_, addr)| addr.to_string()))
+            .filter(|a| {
+                !ip4_dhcp.is_some_and(|ip| dbg!(dbg!(dbg!(a).strip_prefix(ip)).is_some_and(|aa| dbg!(dbg!(aa).starts_with("/")))))
+            })
+            .collect::<Vec<_>>();
+
+        let gateway = conf
+            .lines()
+            .find_map(|l| l.strip_prefix("IP4.GATEWAY:"))
+            .ok_or(Error::NmcliParse)?
+            .to_string();
+
+        let dns_dhcp = dhcp
+            .get("domain_name_servers")
+            .unwrap_or(&"")
+            .split(|c: char| !(c.is_ascii_alphanumeric() || c == '.'))
+            .map(&str::to_string)
+            .collect::<Vec<_>>();
+
+        let dns_static = conf
+            .lines()
+            .filter(|l| l.starts_with("IP4.DNS["))
+            .filter_map(|l| l.split_once(':').map(|(_, addr)| addr.to_string()))
+            .filter(|a| !dns_dhcp.contains(a))
+            //          .map(ToString::to_string)
+            .collect::<Vec<_>>();
+
+        let method = conf
+            .lines()
+            .find_map(|l| l.strip_prefix("ipv4.method:"))
+            .ok_or(Error::NmcliParse)?
+            == "auto";
+
+        Ok(IpConfig {
+            dev: String::new(),
+            dhcp: method,
+            ip: ip4_static,
+            gateway,
+            dns: dns_static.iter().map(ToString::to_string).collect(),
+            ip_dhcp: ip4_dhcp.unwrap_or(&"").to_string(),
+            dns_dhcp,
+        })
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -149,12 +222,12 @@ pub fn client(mut stream: UnixStream) {
             Err(e) => Response::Error(e),
         };
         match serde_xml_rs::ser::to_writer(&mut stream, &res) {
-            Ok(_) => {}
+            Ok(()) => {}
             Err(e) => {
                 eprintln!("{e:?}");
                 break;
             }
-        };
+        }
     }
     let _ = stream.shutdown(std::net::Shutdown::Both);
 }
@@ -290,7 +363,7 @@ fn perform_operation(cmd: &Command) -> Result<Response, Error> {
                 .args([
                     "--terse",
                     "-f",
-                    "IP4.ADDRESS,ipv4.addresses,IP4.GATEWAY,IP4.DNS,ipv4.dns,ipv4.method",
+                    "IP4.ADDRESS,ipv4.addresses,IP4.GATEWAY,IP4.DNS,ipv4.dns,ipv4.method,DHCP4.OPTION",
                     "con",
                     "show",
                 ])
@@ -300,56 +373,11 @@ fn perform_operation(cmd: &Command) -> Result<Response, Error> {
             if !output.status.success() {
                 return Err(Error::Nmcli);
             }
-            let conf = String::from_utf8(output.stdout).or(Err(Error::NmcliUtf8))?;
-
-            let ip4_static = conf
-                .lines()
-                .find_map(|l| l.strip_prefix("ipv4.addresses:"))
-                .ok_or(Error::NmcliParse)?
-                .to_string();
-
-            let ip4_dhcp = conf
-                .lines()
-                .filter(|l| l.starts_with("IP4.ADDRESS["))
-                .filter_map(|l| l.split_once(':').map(|(_, addr)| addr.to_string()))
-                .filter(|a| *a != ip4_static)
-                .collect::<Vec<_>>();
-
-            let gateway = conf
-                .lines()
-                .find_map(|l| l.strip_prefix("IP4.GATEWAY:"))
-                .ok_or(Error::NmcliParse)?
-                .to_string();
-
-            let dns_static = conf
-                .lines()
-                .find_map(|l| l.strip_prefix("ipv4.dns:"))
-                .ok_or(Error::NmcliParse)?
-                .split(',')
-                .collect::<Vec<_>>();
-
-            let dns_dhcp = conf
-                .lines()
-                .filter(|l| l.starts_with("IP4.DNS["))
-                .filter_map(|l| l.split_once(':').map(|(_, addr)| addr))
-                .filter(|a| !dns_static.contains(a))
-                .map(ToString::to_string)
-                .collect::<Vec<_>>();
-
-            let dhcp = conf
-                .lines()
-                .find_map(|l| l.strip_prefix("ipv4.method:"))
-                .ok_or(Error::NmcliParse)?
-                == "auto";
-
             Ok(Response::IpConfig(IpConfig {
                 dev: dev.clone(),
-                dhcp,
-                ip: ip4_static,
-                gateway,
-                dns: dns_static.iter().map(ToString::to_string).collect(),
-                ip_dhcp: ip4_dhcp,
-                dns_dhcp,
+                ..String::from_utf8(output.stdout)
+                    .or(Err(Error::NmcliUtf8))?
+                    .try_into()?
             }))
         }
         Command::IpConfigSet(conf) => {
@@ -358,7 +386,7 @@ fn perform_operation(cmd: &Command) -> Result<Response, Error> {
                 if !std::process::Command::new("nmcli")
                     .args(dev)
                     .args(["ipv4.method", "auto"])
-                    .args(["ipv4.addresses", &conf.ip])
+                    .args(["ipv4.addresses", &conf.ip.join(",")])
                     .args(["ipv4.gateway", &conf.gateway])
                     .arg("ipv4.dns")
                     .arg(conf.dns.join(","))
@@ -373,7 +401,7 @@ fn perform_operation(cmd: &Command) -> Result<Response, Error> {
                     && !std::process::Command::new("nmcli")
                         .args(dev)
                         .arg("ipv4.addresses")
-                        .arg(&conf.ip)
+                        .arg(conf.ip.join(","))
                         .status()
                         .or(Err(Error::Spawn))?
                         .success()
@@ -464,7 +492,7 @@ fn perform_operation(cmd: &Command) -> Result<Response, Error> {
                         .strip_prefix("[Time]\nFallbackNTP=")
                         .ok_or(Error::NtpFallbackMalformed)?
                         .split(' ')
-                        .map(|a| a.trim().to_string() )
+                        .map(|a| a.trim().to_string())
                         .collect()
                 } else {
                     vec![String::new()]
@@ -486,7 +514,7 @@ fn perform_operation(cmd: &Command) -> Result<Response, Error> {
                     let mut server = "[Time]\nNTP=".to_string();
                     server.push_str(&conf.server);
                     fs::write("/etc/systemd/timesyncd.conf.d/server.conf", &server)
-                        .or(Err(Error::NtpServerWrite))?
+                        .or(Err(Error::NtpServerWrite))?;
                 }
             }
             if conf.fallback.contains(&"-".to_string()) {
