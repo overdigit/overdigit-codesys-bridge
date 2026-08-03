@@ -20,13 +20,14 @@ enum FanTest {
 struct IpConfig {
     dev: String,
     dhcp: bool,
+    #[serde(default)]
     ip_dhcp: String,
     gateway: String,
 
     #[serde(default)]
-    dns: Vec<String>,
-    #[serde(default)]
     ip: Vec<String>,
+    #[serde(default)]
+    dns: Vec<String>,
     #[serde(default)]
     dns_dhcp: Vec<String>,
 }
@@ -59,7 +60,8 @@ impl TryFrom<String> for IpConfig {
             .filter(|l| l.starts_with("IP4.ADDRESS["))
             .filter_map(|l| l.split_once(':').map(|(_, addr)| addr.to_string()))
             .filter(|a| {
-                !ip4_dhcp.is_some_and(|ip| dbg!(dbg!(dbg!(a).strip_prefix(ip)).is_some_and(|aa| dbg!(dbg!(aa).starts_with("/")))))
+                !ip4_dhcp
+                    .is_some_and(|ip| (a).strip_prefix(ip).is_some_and(|aa| aa.starts_with("/")))
             })
             .collect::<Vec<_>>();
 
