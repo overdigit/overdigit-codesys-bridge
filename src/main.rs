@@ -1,54 +1,9 @@
-use inotify::{EventMask, Inotify, WatchMask};
 use std::error::Error;
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::thread;
 
 mod bridge;
-
-// Credit: https://github.com/nroi/waitforfile/blob/master/src/main.rs
-fn wait_for(dirname: &std::path::Path) -> Result<bool, Box<dyn Error>> {
-    let mut ino = Inotify::init()?;
-    let parent = dirname.parent().expect("This folder has no parent. How? It's the default folder, I wrote its path. What did you do?");
-    ino.watches()
-        .add(parent, WatchMask::DELETE_SELF | WatchMask::CREATE)
-        .unwrap();
-    if !dirname.exists() {
-        loop {
-            let mut buffer = [0; 1024];
-            let events = ino
-                .read_events_blocking(&mut buffer)
-                .expect("Error while reading events");
-            for event in events {
-                match event.name {
-                    Some(name) => {
-                        if parent.join(name) == dirname {
-                            return Ok(true);
-                        }
-                    }
-                    None => {
-                        if event.mask == EventMask::DELETE_SELF {
-                            return Err("The watched directory has been deleted.".into());
-                        }
-                    }
-                }
-            }
-        }
-    }
-    // file already exists prior to running this program.
-    Ok(false)
-}
-
-fn get_uid(username: &str) -> std::io::Result<Option<u32>> {
-    Ok(std::fs::read_to_string("/etc/passwd")?
-        .lines()
-        .find_map(|l| {
-            let v = l.split(':').collect::<Vec<_>>();
-            if v.len() == 7 && v.first() == Some(&username) {
-                return v.get(2)?.parse::<u32>().ok();
-            }
-            None
-        }))
-}
+mod util;
 
 fn main() -> Result<(), Box<dyn Error>> {
     env_logger::init();
@@ -64,7 +19,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             );
         }
         let path = std::path::Path::new(&dir);
-        wait_for(path)?;
+        util::wait_for(path)?;
     }
     let sock_path = dir_path.join("wp360-bridge.sock");
     match sock_path.try_exists() {
@@ -87,7 +42,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let socket_user =
         std::env::var("WP360_CODESYS_SOCK_USER").unwrap_or("codesyscontrol".to_string());
-    let socket_uid = get_uid(&socket_user)?.unwrap_or_else(|| {
+    let socket_uid = util::get_uid(&socket_user)?.unwrap_or_else(|| {
         panic!(
             "{}",
             format!("Could not find user {socket_user} in /etc/passwd.")

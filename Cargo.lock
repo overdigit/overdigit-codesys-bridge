@@ -504,7 +504,7 @@ dependencies = [
 
 [[package]]
 name = "wp360-codesys-bridge-rs"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "env_logger",
  "inotify",
