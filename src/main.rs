@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::fs::Permissions;
-use std::os::unix::net::{UnixListener, UnixStream};
 use std::os::unix::fs::PermissionsExt;
+use std::os::unix::net::{UnixListener, UnixStream};
 use std::thread;
 
 mod bridge;

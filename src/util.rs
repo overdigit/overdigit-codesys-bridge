@@ -69,22 +69,21 @@ pub fn read_placeholders(config_paths: &str) -> Result<(), Box<dyn Error>> {
         let Some(sysfile) = data.get("sysfile") else {
             continue;
         };
-        placeholders.extend(sysfile
-            .iter()
-            .filter(|(k, _v)| {
-                k.strip_prefix("placeholderfilepath.")
-                    .and_then(|n| n.parse::<i32>().ok())
-                    .is_some()
-            })
-            .filter_map(|(_k, v)| {
-                v.as_ref()
-                    .and_then(|v| v.rsplit_once(','))
-                    .map(|(v1, v2)| (v2.to_string(), v1.to_string()))
-            })
+        placeholders.extend(
+            sysfile
+                .iter()
+                .filter(|(k, _v)| {
+                    k.strip_prefix("placeholderfilepath.")
+                        .and_then(|n| n.parse::<i32>().ok())
+                        .is_some()
+                })
+                .filter_map(|(_k, v)| {
+                    v.as_ref()
+                        .and_then(|v| v.rsplit_once(','))
+                        .map(|(v1, v2)| (v2.to_string(), v1.to_string()))
+                }),
         );
     }
     let _ = PLACEHOLDERS.set(placeholders);
     Ok(())
 }
-
-
