@@ -1,5 +1,7 @@
 use std::error::Error;
+use std::fs::Permissions;
 use std::os::unix::net::{UnixListener, UnixStream};
+use std::os::unix::fs::PermissionsExt;
 use std::thread;
 
 mod bridge;
@@ -52,6 +54,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let listener = UnixListener::bind(&sock_path)?;
 
     std::os::unix::fs::chown(&sock_path, Some(socket_uid), None)?;
+    std::fs::set_permissions(&sock_path, Permissions::from_mode(0o775))?;
 
     for stream in listener.incoming() {
         match stream {
