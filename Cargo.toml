@@ -16,7 +16,7 @@ serde_repr = "0.1.21"
 placeholders = []
 
 [package.metadata.deb]
-revision = "1"
+revision = "2"
 maintainer-scripts = "debian/"
 section = "misc"
 systemd-units = { }

@@ -1,10 +1,11 @@
 [Unit]
 Description=General utility privileged daemon for CODESYS integration
 After=multi-user.target
+After=codesyscontrol.service
 
 [Service]
 ExecStartPre=-unlink /var/opt/codesyscontrolapi/extfuncs/wp360-bridge.sock
 ExecStart=/usr/libexec/wp360-codesys-bridge/wp360-codesys-bridge
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=codesyscontrol.service
