@@ -1,11 +1,12 @@
 [package]
-name = "wp360-codesys-bridge-rs"
+name = "overdigit-codesys-bridge"
 authors = ["OVERDIGIT <info@overdigit.com>"]
-version = "0.6.2"
+version = "0.6.5"
 edition = "2024"
 
 [dependencies]
 env_logger = "0.11.11"
+gethostname = "1.1.0"
 inotify = "0.11.4"
 rppal = "0.22.1"
 serde = { version = "1.0.228", features = ["derive"] }
@@ -16,13 +17,25 @@ serde_repr = "0.1.21"
 placeholders = []
 
 [package.metadata.deb]
-revision = "2"
+revision = "1"
 maintainer-scripts = "debian/"
 section = "misc"
 systemd-units = { }
 extended-description = """\
-A daemon for privileged operations, using XML messages via Unix Domain Sockets as its interface.\
-Meant for use on OVERDIGIT WP360 PLC devices via the OVERDIGIT WP360 CODESYS library."""
+A daemon for privileged operations, using XML messages via Unix Domain Sockets as its interface. \
+Meant for use on OVERDIGIT WP360 PLC devices via the OVERDIGIT WP360 CODESYS library, but non-device-specific \
+features should work on most Linux-based systems."""
 assets = [
-    ["target/release/wp360-codesys-bridge-rs", "usr/libexec/wp360-codesys-bridge/wp360-codesys-bridge", "755"],
+    ["target/release/overdigit-codesys-bridge", "usr/libexec/overdigit-codesys-bridge/overdigit-codesys-bridge", "755"],
 ]
+
+[package.metadata.deb.variants.oldlib]
+name = "wp360-codesys-bridge-rs"
+revision = "1"
+maintainer-scripts = "debian/"
+section = "oldlibs"
+depends = "overdigit-codesys-bridge"
+extended-description = """\
+  This is a transitional package. It can safely be removed."""
+assets = []
+systemd-units = { unit-scripts = "." }

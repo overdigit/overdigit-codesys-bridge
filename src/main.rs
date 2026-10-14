@@ -23,7 +23,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         let path = std::path::Path::new(&dir);
         util::wait_for(path)?;
     }
-    let sock_path = dir_path.join("wp360-bridge.sock");
+    let sock_path = dir_path.join("overdigit-codesys-bridge.sock");
     match sock_path.try_exists() {
         Ok(true) => {
             match UnixStream::connect(&sock_path) {

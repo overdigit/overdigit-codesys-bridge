@@ -1,3 +1,4 @@
+use gethostname::gethostname;
 use rppal::gpio::Gpio;
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
@@ -113,6 +114,7 @@ struct NtpConfig {
 
 #[derive(Deserialize, Debug)]
 enum Command {
+    CapacitorVoltageRead,
     CpuSerialGet,
     CpuTempRead,
     FanTest(FanTest),
@@ -124,8 +126,10 @@ enum Command {
     NtpConfigGet,
     NtpConfigSet(NtpConfig),
     OsReboot,
+    PowerVoltageRead,
     RtcCheck,
     RtsRestart,
+    SwitchingVoltageRead,
     TimezoneGet,
     TimezoneSet(String),
     WatchdogWrite(u16),
@@ -134,6 +138,7 @@ enum Command {
 #[derive(Serialize, Debug)]
 #[serde(rename = "Result")]
 enum Response {
+    Voltage(u32),
     CpuSerial(String),
     CpuTemp(u32),
     Hostname(String),
@@ -149,6 +154,9 @@ enum Response {
 #[repr(u32)]
 #[derive(Serialize_repr, Debug)]
 enum Error {
+    CapacitorVoltageOpen = 71,
+    CapacitorVoltageNotFound = 72,
+
     CpuinfoOpen = 101,
     CpuSerialNotFound = 102,
 
@@ -162,10 +170,12 @@ enum Error {
     FanTestPin27 = 117,
     FanTestSetSpeed = 112,
 
+    #[expect(unused)]
     Hostnamectl = 21,
     HostnameParse = 22,
     HostsRead = 23,
     HostsWrite = 24,
+    HostnameWrite = 25,
 
     MacAddress = 41,
 
@@ -190,6 +200,9 @@ enum Error {
     NtpServerRm = 61,
     NtpServerWrite = 62,
 
+    PowerVoltageOpen = 74,
+    PowerVoltageNotFound = 75,
+
     Reboot = 3,
 
     Rtc = 5,
@@ -197,6 +210,9 @@ enum Error {
     RtsRestart = 7,
 
     Spawn = 1,
+
+    SwitchingVoltageOpen = 77,
+    SwitchingVoltageNotFound = 78,
 
     Timedatectl = 51,
     TimedatectlParse = 52,
@@ -236,6 +252,13 @@ pub fn client(mut stream: UnixStream) {
 
 fn perform_operation(cmd: &Command) -> Result<Response, Error> {
     match cmd {
+        Command::CapacitorVoltageRead => Ok(Response::Voltage(
+            std::fs::read_to_string("/sys/kernel/wp360-pmuc/capacitor_voltage")
+                .or(Err(Error::CapacitorVoltageOpen))?
+                .trim()
+                .parse::<u32>()
+                .or(Err(Error::CapacitorVoltageNotFound))?,
+        )),
         Command::CpuSerialGet => {
             let cpuinfo = File::open("/proc/cpuinfo").or(Err(Error::CpuinfoOpen))?;
             let cpuinfo = std::io::BufReader::new(cpuinfo);
@@ -319,22 +342,16 @@ fn perform_operation(cmd: &Command) -> Result<Response, Error> {
             Ok(Response::Success(()))
         }
         Command::HostnameGet => {
-            let output = std::process::Command::new("hostnamectl")
-                .arg("hostname")
-                .output()
-                .or(Err(Error::Spawn))?;
-            if !output.status.success() {
-                return Err(Error::Hostnamectl);
-            }
+            let output = gethostname();
             Ok(Response::Hostname(
-                String::from_utf8(output.stdout)
-                    .or(Err(Error::HostnameParse))?
+                output.to_str()
+                    .ok_or(Error::HostnameParse)?
                     .trim()
                     .to_string(),
             ))
         }
         Command::HostnameSet(hostname) => {
-            if !std::process::Command::new("hostnamectl")
+            /*if !std::process::Command::new("hostnamectl")
                 .args(["--no-ask-password", "hostname"])
                 .arg(hostname)
                 .status()
@@ -342,7 +359,8 @@ fn perform_operation(cmd: &Command) -> Result<Response, Error> {
                 .success()
             {
                 return Err(Error::Hostnamectl);
-            }
+            }*/
+            fs::write("/etc/hostname", hostname).or(Err(Error::HostnameWrite))?;
             let hosts = fs::read_to_string("/etc/hosts").or(Err(Error::HostsRead))?;
             fs::write(
                 "/etc/hosts",
@@ -562,6 +580,13 @@ fn perform_operation(cmd: &Command) -> Result<Response, Error> {
             }
             Ok(Response::Success(()))
         }
+        Command::PowerVoltageRead => Ok(Response::Voltage(
+            std::fs::read_to_string("/sys/kernel/wp360-pmuc/power_voltage")
+                .or(Err(Error::PowerVoltageOpen))?
+                .trim()
+                .parse::<u32>()
+                .or(Err(Error::PowerVoltageNotFound))?,
+        )),
         Command::RtcCheck => Ok(Response::Rtc(fs::exists("/dev/rtc").or(Err(Error::Rtc))?)),
         Command::RtsRestart => {
             if !std::process::Command::new("systemctl")
@@ -574,6 +599,13 @@ fn perform_operation(cmd: &Command) -> Result<Response, Error> {
             }
             Ok(Response::Success(()))
         }
+        Command::SwitchingVoltageRead => Ok(Response::Voltage(
+            std::fs::read_to_string("/sys/kernel/wp360-pmuc/switching_voltage")
+                .or(Err(Error::SwitchingVoltageOpen))?
+                .trim()
+                .parse::<u32>()
+                .or(Err(Error::SwitchingVoltageNotFound))?,
+        )),
         Command::TimezoneGet => {
             let output = std::process::Command::new("timedatectl")
                 .args(["show", "-P", "Timezone"])

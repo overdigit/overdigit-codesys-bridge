@@ -4,8 +4,8 @@ After=multi-user.target
 After=codesyscontrol.service
 
 [Service]
-ExecStartPre=-unlink /var/opt/codesyscontrolapi/extfuncs/wp360-bridge.sock
-ExecStart=/usr/libexec/wp360-codesys-bridge/wp360-codesys-bridge
+ExecStartPre=-unlink /var/opt/codesyscontrolapi/extfuncs/overdigit-codesys-bridge.sock
+ExecStart=/usr/libexec/overdigit-codesys-bridge/overdigit-codesys-bridge
 
 [Install]
 WantedBy=codesyscontrol.service
